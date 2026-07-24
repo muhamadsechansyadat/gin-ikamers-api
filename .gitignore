@@ -1,0 +1,6 @@
+.env
+tmp/
+.idea/
+bin/
+dist/
+*.log
