@@ -16,7 +16,7 @@ func getString(key, fallback string) string {
 
 func getInt(key string, fallback int) int {
 	if v := os.Getenv(key); v != "" {
-		if n, err := strconv.Atoi(v); err != nil {
+		if n, err := strconv.Atoi(v); err == nil {
 			return n
 		}
 	}
@@ -25,7 +25,7 @@ func getInt(key string, fallback int) int {
 
 func getDuration(key string, fallback time.Duration) time.Duration {
 	if v := os.Getenv(key); v != "" {
-		if d, err := time.ParseDuration(v); err != nil {
+		if d, err := time.ParseDuration(v); err == nil {
 			return d
 		}
 	}

@@ -12,6 +12,8 @@ func RegisterRouter(router *gin.Engine, h *handlers.Handler) {
 		{
 			v1.GET("/", h.Home)
 			v1.GET("/health", h.Health)
+
+			registerAuthRoutes(v1, h.Auth)
 		}
 	}
 }

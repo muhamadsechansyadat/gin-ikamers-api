@@ -40,10 +40,23 @@ type LogConfig struct {
 	Format string
 }
 
+type JWTConfig struct {
+	Secret          string
+	AccessTokenTTL  time.Duration
+	RefreshTokenTTL time.Duration
+	Issuer          string
+}
+
+type OAuthConfig struct {
+	GoogleClientID string
+}
+
 type Config struct {
-	App AppConfig
-	DB  DatabaseConfig
-	Log LogConfig
+	App   AppConfig
+	DB    DatabaseConfig
+	Log   LogConfig
+	JWT   JWTConfig
+	OAuth OAuthConfig
 }
 
 func Load() (*Config, error) {
@@ -80,6 +93,15 @@ func Load() (*Config, error) {
 		Log: LogConfig{
 			Level:  getString("LOG_LEVEL", "info"),
 			Format: getString("LOG_FORMAT", "text"),
+		},
+		JWT: JWTConfig{
+			Secret:          getString("JWT_SECRET", ""),
+			AccessTokenTTL:  getDuration("JWT_ACCESS_TOKEN_TTL", 15*time.Minute),
+			RefreshTokenTTL: getDuration("JWT_REFRESH_TOKEN_TTL", 720*time.Hour),
+			Issuer:          getString("JWT_ISSUER", "ikamers-api"),
+		},
+		OAuth: OAuthConfig{
+			GoogleClientID: getString("GOOGLE_CLIENT_ID", ""),
 		},
 	}
 
