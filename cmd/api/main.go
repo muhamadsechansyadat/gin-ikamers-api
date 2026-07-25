@@ -3,10 +3,10 @@ package main
 import (
 	"gin-ikamers-api/handlers"
 	"gin-ikamers-api/internal/config"
-	"gin-ikamers-api/internal/middleware"
 	"gin-ikamers-api/internal/platform/database"
 	"gin-ikamers-api/internal/routes"
 	"gin-ikamers-api/internal/server"
+	middleware2 "gin-ikamers-api/internal/shared/middleware"
 	"gin-ikamers-api/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"os"
@@ -50,8 +50,8 @@ func main() {
 	}
 
 	router.Use(
-		middleware.Recovery(log),
-		middleware.CORS(),
+		middleware2.Recovery(log),
+		middleware2.CORS(),
 	)
 
 	router.HandleMethodNotAllowed = true

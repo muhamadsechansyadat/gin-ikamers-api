@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"gin-ikamers-api/internal/response"
+	"gin-ikamers-api/internal/shared/response"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"

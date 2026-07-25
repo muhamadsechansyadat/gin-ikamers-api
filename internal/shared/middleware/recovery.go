@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"gin-ikamers-api/internal/response"
+	"gin-ikamers-api/internal/shared/response"
 	"github.com/gin-gonic/gin"
 	"log/slog"
 	"net/http"
