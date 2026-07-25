@@ -12,7 +12,7 @@ type Handler struct {
 	DB     *sql.DB
 	Logger *slog.Logger
 	Cfg    *config.Config
-	Auth   *AuthHandler
+	Auth   *auth.Handler
 }
 
 func New(db *sql.DB, logger *slog.Logger, cfg *config.Config) *Handler {
@@ -31,6 +31,6 @@ func New(db *sql.DB, logger *slog.Logger, cfg *config.Config) *Handler {
 		DB:     db,
 		Logger: logger,
 		Cfg:    cfg,
-		Auth:   NewAuthHandler(authService),
+		Auth:   auth.NewHandler(authService),
 	}
 }

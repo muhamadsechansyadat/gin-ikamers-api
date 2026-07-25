@@ -2,17 +2,9 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"gin-ikamers-api/internal/user"
 	"google.golang.org/api/idtoken"
 	"time"
-)
-
-var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserInactive       = errors.New("user is inactive")
-	ErrInvalidGoogleToken = errors.New("invalid google id token")
-	ErrUserNotFound       = errors.New("user not found")
 )
 
 type Service struct {

@@ -1,39 +1,20 @@
-package handlers
+package auth
 
 import (
-	"gin-ikamers-api/internal/auth"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
 )
 
-type AuthHandler struct {
-	service *auth.Service
+type Handler struct {
+	service *Service
 }
 
-func NewAuthHandler(service *auth.Service) *AuthHandler {
-	return &AuthHandler{service: service}
+func NewHandler(service *Service) *Handler {
+	return &Handler{service: service}
 }
 
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
-}
-
-type RegisterRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
-}
-
-type GoogleLoginRequest struct {
-	IdToken string `json:"id_token" binding:"required"`
-}
-
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
-
-func (h *AuthHandler) Register(c *gin.Context) {
+func (h *Handler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -57,7 +38,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	})
 }
 
-func (h *AuthHandler) Login(c *gin.Context) {
+func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -70,9 +51,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	tokens, err := h.service.LoginWithPassword(c.Request.Context(), req.Email, req.Password, ua, ip)
 	if err != nil {
 		switch err {
-		case auth.ErrInvalidCredentials:
+		case ErrInvalidCredentials:
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
-		case auth.ErrUserInactive:
+		case ErrUserInactive:
 			c.JSON(http.StatusForbidden, gin.H{"error": "user account is inactive"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -86,7 +67,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
-func (h *AuthHandler) LoginGoogle(c *gin.Context) {
+func (h *Handler) LoginGoogle(c *gin.Context) {
 	var req GoogleLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -99,9 +80,9 @@ func (h *AuthHandler) LoginGoogle(c *gin.Context) {
 	tokens, err := h.service.LoginWithGoogle(c.Request.Context(), req.IdToken, ua, ip)
 	if err != nil {
 		switch err {
-		case auth.ErrInvalidGoogleToken:
+		case ErrInvalidGoogleToken:
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid google id token"})
-		case auth.ErrUserInactive:
+		case ErrUserInactive:
 			c.JSON(http.StatusForbidden, gin.H{"error": "user account is inactive"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -115,7 +96,7 @@ func (h *AuthHandler) LoginGoogle(c *gin.Context) {
 	})
 }
 
-func (h *AuthHandler) Refresh(c *gin.Context) {
+func (h *Handler) Refresh(c *gin.Context) {
 	var req RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -134,7 +115,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	})
 }
 
-func (h *AuthHandler) Logout(c *gin.Context) {
+func (h *Handler) Logout(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})

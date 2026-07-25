@@ -2,6 +2,7 @@ package routes
 
 import (
 	"gin-ikamers-api/handlers"
+	"gin-ikamers-api/internal/auth"
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,7 +14,7 @@ func RegisterRouter(router *gin.Engine, h *handlers.Handler) {
 			v1.GET("/", h.Home)
 			v1.GET("/health", h.Health)
 
-			registerAuthRoutes(v1, h.Auth)
+			auth.RegisterRoutes(v1, h.Auth)
 		}
 	}
 }
