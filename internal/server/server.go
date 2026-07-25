@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"errors"
-	"gin-ikamers-api/config"
+	"gin-ikamers-api/internal/config"
 	"log/slog"
 	"net/http"
 	"os"

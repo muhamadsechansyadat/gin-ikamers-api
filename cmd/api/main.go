@@ -1,13 +1,13 @@
 package main
 
 import (
-	"gin-ikamers-api/config"
 	"gin-ikamers-api/handlers"
-	"gin-ikamers-api/internal/database"
+	"gin-ikamers-api/internal/config"
 	"gin-ikamers-api/internal/middleware"
+	"gin-ikamers-api/internal/platform/database"
 	"gin-ikamers-api/internal/routes"
 	"gin-ikamers-api/internal/server"
-	"gin-ikamers-api/logger"
+	"gin-ikamers-api/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"os"
 )

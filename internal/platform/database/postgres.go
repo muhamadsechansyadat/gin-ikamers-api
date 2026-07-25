@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"gin-ikamers-api/config"
+	"gin-ikamers-api/internal/config"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"log/slog"
 )

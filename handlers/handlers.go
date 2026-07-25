@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"database/sql"
-	"gin-ikamers-api/config"
 	"gin-ikamers-api/internal/auth"
+	"gin-ikamers-api/internal/config"
 	"gin-ikamers-api/internal/user"
 	"log/slog"
 )

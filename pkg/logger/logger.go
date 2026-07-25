@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"gin-ikamers-api/config"
+	"gin-ikamers-api/internal/config"
 	"log/slog"
 	"os"
 	"strings"
