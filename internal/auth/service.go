@@ -2,8 +2,14 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"gin-ikamers-api/internal/platform/mailer"
 	"gin-ikamers-api/internal/user"
 	"google.golang.org/api/idtoken"
+	"math/big"
+	"strings"
 	"time"
 )
 
@@ -13,6 +19,7 @@ type Service struct {
 	tokens         *TokenService
 	googleClientID string
 	defaultRoleID  int64
+	mailer         mailer.Mailer
 }
 
 type TokenPair struct {
@@ -21,15 +28,17 @@ type TokenPair struct {
 	ExpiresAt    time.Time `json:"expires_at"`
 }
 
-func NewService(users user.Repository, authRepo Repository, tokens *TokenService, googleClientID string, defaultRoleID int64) *Service {
+func NewService(users user.Repository, authRepo Repository, tokens *TokenService, mailer mailer.Mailer, googleClientID string, defaultRoleID int64) *Service {
 	return &Service{
-		users:          users,
-		authRepo:       authRepo,
-		tokens:         tokens,
-		googleClientID: googleClientID,
-		defaultRoleID:  defaultRoleID,
+		users: users, authRepo: authRepo, tokens: tokens,
+		mailer: mailer, googleClientID: googleClientID, defaultRoleID: defaultRoleID,
 	}
 }
+
+const (
+	otpLength     = 6
+	otpTTLMinutes = 15
+)
 
 func (s *Service) LoginWithPassword(ctx context.Context, email, password, ua, ip string) (*TokenPair, error) {
 	u, err := s.users.FindByEmail(ctx, email)
@@ -77,7 +86,6 @@ func (s *Service) LoginWithGoogle(ctx context.Context, idTokenStr, ua, ip string
 	googleSubject := payload.Subject
 	googleEmail, _ := payload.Claims["email"].(string)
 
-	// 1. Identity Google sudah pernah di-link?
 	userID, err := s.authRepo.FindUserIDByProviderIdentity(ctx, "google", googleSubject)
 	if err == nil && userID > 0 {
 		u, err := s.users.FindByID(ctx, userID)
@@ -90,7 +98,6 @@ func (s *Service) LoginWithGoogle(ctx context.Context, idTokenStr, ua, ip string
 		return s.issueTokens(ctx, u, ua, ip)
 	}
 
-	// 2. Email sudah ada (dari register local)? Link identity Google-nya.
 	existingUser, err := s.users.FindByEmail(ctx, googleEmail)
 	if err == nil && existingUser != nil {
 		if err := s.authRepo.LinkIdentity(ctx, &Identity{
@@ -105,7 +112,6 @@ func (s *Service) LoginWithGoogle(ctx context.Context, idTokenStr, ua, ip string
 		return s.issueTokens(ctx, existingUser, ua, ip)
 	}
 
-	// 3. User baru — create user + link identity
 	newUser, err := s.users.Create(ctx, &user.User{
 		RoleID: s.defaultRoleID, Email: googleEmail, IsActive: true,
 	})
@@ -168,4 +174,123 @@ func (s *Service) issueTokens(ctx context.Context, u *user.User, ua, ip string) 
 		RefreshToken: raw,
 		ExpiresAt:    exp,
 	}, nil
+}
+
+func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassword *string, newPassword string) error {
+	u, err := s.users.FindByID(ctx, userID)
+	if err != nil || u == nil {
+		return ErrUserNotFound
+	}
+
+	hasPassword := u.PasswordHash != nil && *u.PasswordHash != ""
+
+	if hasPassword {
+		if currentPassword == nil || *currentPassword == "" {
+			return ErrCurrentPasswordRequired
+		}
+		if !VerifyPassword(*u.PasswordHash, *currentPassword) {
+			return ErrInvalidCredentials
+		}
+		if VerifyPassword(*u.PasswordHash, newPassword) {
+			return ErrPasswordSameAsCurrent
+		}
+	}
+
+	newHash, err := HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	if err := s.users.UpdatePassword(ctx, userID, newHash); err != nil {
+		return err
+	}
+	_ = s.authRepo.RevokeAllRefreshTokens(ctx, userID)
+	return nil
+}
+
+func (s *Service) RequestEmailChange(ctx context.Context, userID int64, newEmail string, currentPassword *string) error {
+	u, err := s.users.FindByID(ctx, userID)
+	if err != nil || u == nil {
+		return ErrUserNotFound
+	}
+
+	hasPassword := u.PasswordHash != nil && *u.PasswordHash != ""
+	if hasPassword {
+		if currentPassword == nil || *currentPassword == "" {
+			return ErrCurrentPasswordRequired
+		}
+		if !VerifyPassword(*u.PasswordHash, *currentPassword) {
+			return ErrInvalidCredentials
+		}
+	}
+
+	newEmail = strings.ToLower(strings.TrimSpace(newEmail))
+	if newEmail == strings.ToLower(u.Email) {
+		return ErrEmailAlreadyUsed
+	}
+	existing, _ := s.users.FindByEmail(ctx, newEmail)
+	if existing != nil {
+		return ErrEmailAlreadyUsed
+	}
+
+	otp, err := generateNumericOTP(otpLength)
+	if err != nil {
+		return err
+	}
+	otpHash := hashOTP(otp)
+	expiresAt := time.Now().Add(otpTTLMinutes * time.Minute)
+
+	_ = s.authRepo.InvalidateActiveEmailChangeVerifications(ctx, userID)
+	if err := s.authRepo.CreateEmailChangeVerification(ctx, userID, newEmail, otpHash, expiresAt); err != nil {
+		return err
+	}
+
+	body, err := mailer.RenderEmailChangeOTP(otp, otpTTLMinutes)
+	if err != nil {
+		return err
+	}
+	return s.mailer.Send(ctx, newEmail, "Confirm Your Email Change", body)
+}
+
+func (s *Service) ConfirmEmailChange(ctx context.Context, userID int64, otp string) error {
+	v, err := s.authRepo.FindActiveEmailChangeVerification(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if v == nil {
+		return ErrNoActiveVerification
+	}
+	if v.OTPHash != hashOTP(otp) {
+		return ErrInvalidOTP
+	}
+
+	existing, _ := s.users.FindByEmail(ctx, v.NewEmail)
+	if existing != nil && existing.ID != userID {
+		_ = s.authRepo.MarkEmailChangeVerificationUsed(ctx, v.ID)
+		return ErrEmailAlreadyUsed
+	}
+
+	if err := s.users.UpdateEmail(ctx, userID, v.NewEmail); err != nil {
+		return err
+	}
+	_ = s.authRepo.MarkEmailChangeVerificationUsed(ctx, v.ID)
+	_ = s.authRepo.RevokeAllRefreshTokens(ctx, userID)
+	return nil
+}
+
+func generateNumericOTP(length int) (string, error) {
+	const digits = "0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(digits))))
+		if err != nil {
+			return "", err
+		}
+		b[i] = digits[n.Int64()]
+	}
+	return string(b), nil
+}
+
+func hashOTP(otp string) string {
+	h := sha256.Sum256([]byte(otp))
+	return hex.EncodeToString(h[:])
 }

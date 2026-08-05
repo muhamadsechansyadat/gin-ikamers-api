@@ -20,3 +20,13 @@ type RefreshToken struct {
 	RevokedAt *time.Time
 	CreatedAt time.Time
 }
+
+type EmailChangeVerification struct {
+	ID        int64
+	UserID    int64
+	NewEmail  string
+	OTPHash   string
+	ExpiresAt time.Time
+	UsedAt    *time.Time
+	CreatedAt time.Time
+}

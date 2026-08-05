@@ -13,4 +13,9 @@ type Repository interface {
 	FindActiveRefreshToken(ctx context.Context, tokenHash string) (int64, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
 	RevokeAllRefreshTokens(ctx context.Context, userID int64) error
+
+	CreateEmailChangeVerification(ctx context.Context, userID int64, newEmail, otpHash string, expiresAt time.Time) error
+	FindActiveEmailChangeVerification(ctx context.Context, userID int64) (*EmailChangeVerification, error)
+	MarkEmailChangeVerificationUsed(ctx context.Context, id int64) error
+	InvalidateActiveEmailChangeVerifications(ctx context.Context, userID int64) error
 }

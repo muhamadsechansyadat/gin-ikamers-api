@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gin-ikamers-api/internal/shared/validation"
 	"os"
 
 	"gin-ikamers-api/internal/app"
@@ -29,8 +30,13 @@ func main() {
 	}
 	defer db.Close()
 
+	gormDB, err := database.NewGorm(db, cfg.App.Env)
+	if err != nil {
+		log.Error("Failed to ini GORM", "error", err)
+		os.Exit(1)
+	}
 	// Wire semua dependencies
-	application := app.New(db, log, cfg)
+	application := app.New(db, gormDB, log, cfg)
 
 	// Setup Gin
 	setGinMode(cfg.App.Env)
@@ -41,6 +47,8 @@ func main() {
 	}
 	router.Use(middleware.Recovery(log), middleware.CORS())
 	router.HandleMethodNotAllowed = true
+
+	validation.Init()
 
 	// Register routes
 	application.RegisterRoutes(router)

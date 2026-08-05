@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"gin-ikamers-api/internal/config"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 	"log/slog"
 )
 
@@ -40,4 +43,21 @@ func Connect(cfg config.DatabaseConfig, logger *slog.Logger) (*sql.DB, error) {
 	)
 
 	return db, nil
+}
+
+func NewGorm(db *sql.DB, appEnv string) (*gorm.DB, error) {
+	logLevel := gormlogger.Warn
+	if appEnv == "development" {
+		logLevel = gormlogger.Info
+	}
+
+	gdb, err := gorm.Open(postgres.New(postgres.Config{Conn: db}), &gorm.Config{
+		Logger:                                   gormlogger.Default.LogMode(logLevel),
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("open gorm db: %w", err)
+	}
+	return gdb, nil
 }

@@ -6,8 +6,9 @@ type LoginRequest struct {
 }
 
 type RegisterRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
+	Email                string `json:"email" binding:"required,email"`
+	Password             string `json:"password" binding:"required,min=8,max=72,strong_password"`
+	PasswordConfirmation string `json:"password_confirmation" binding:"required,eqfield=Password"`
 }
 
 type GoogleLoginRequest struct {

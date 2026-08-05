@@ -79,3 +79,39 @@ func (r *PostgresRepository) RevokeAllRefreshTokens(ctx context.Context, userID 
    IS NULL`, userID)
 	return err
 }
+
+func (r *PostgresRepository) CreateEmailChangeVerification(ctx context.Context, userID int64, newEmail, otpHash string, expiresAt time.Time) error {
+	_, err := r.db.ExecContext(ctx, `                                                                                                                                                                           
+                INSERT INTO email_change_verifications (user_id, new_email, otp_hash, expires_at)
+                VALUES ($1, $2, $3, $4)`,
+		userID, newEmail, otpHash, expiresAt)
+	return err
+}
+
+func (r *PostgresRepository) FindActiveEmailChangeVerification(ctx context.Context, userID int64) (*EmailChangeVerification, error) {
+	var v EmailChangeVerification
+	err := r.db.QueryRowContext(ctx, `                                                                                                                                                                          
+                SELECT id, user_id, new_email, otp_hash, expires_at, used_at, created_at
+                FROM email_change_verifications                                                                                                                                                                     
+                WHERE user_id = $1 AND used_at IS NULL AND expires_at > now()                                                                                                                                     
+                ORDER BY created_at DESC LIMIT 1`,
+		userID).Scan(&v.ID, &v.UserID, &v.NewEmail, &v.OTPHash, &v.ExpiresAt, &v.UsedAt, &v.CreatedAt)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return &v, err
+}
+
+func (r *PostgresRepository) MarkEmailChangeVerificationUsed(ctx context.Context, id int64) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE email_change_verifications SET used_at = now() WHERE id = $1`, id)
+	return err
+}
+
+func (r *PostgresRepository) InvalidateActiveEmailChangeVerifications(ctx context.Context, userID int64) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE email_change_verifications SET used_at = now()
+                 WHERE user_id = $1 AND used_at IS NULL`, userID)
+	return err
+}

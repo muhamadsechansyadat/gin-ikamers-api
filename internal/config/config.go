@@ -51,12 +51,29 @@ type OAuthConfig struct {
 	GoogleClientID string
 }
 
+type StorageConfig struct {
+	SupabaseURL           string
+	SupabaseServiceKey    string
+	SupabaseStorageBucket string
+}
+
+type MailerConfig struct {
+	Host      string
+	Port      int
+	Username  string
+	Password  string
+	FromName  string
+	FromEmail string
+}
+
 type Config struct {
-	App   AppConfig
-	DB    DatabaseConfig
-	Log   LogConfig
-	JWT   JWTConfig
-	OAuth OAuthConfig
+	App     AppConfig
+	DB      DatabaseConfig
+	Log     LogConfig
+	JWT     JWTConfig
+	OAuth   OAuthConfig
+	Storage StorageConfig
+	Mailer  MailerConfig
 }
 
 func Load() (*Config, error) {
@@ -96,12 +113,25 @@ func Load() (*Config, error) {
 		},
 		JWT: JWTConfig{
 			Secret:          getString("JWT_SECRET", ""),
-			AccessTokenTTL:  getDuration("JWT_ACCESS_TOKEN_TTL", 15*time.Minute),
+			AccessTokenTTL:  getDuration("JWT_ACCESS_TOKEN_TTL", 360*time.Minute),
 			RefreshTokenTTL: getDuration("JWT_REFRESH_TOKEN_TTL", 720*time.Hour),
 			Issuer:          getString("JWT_ISSUER", "ikamers-api"),
 		},
 		OAuth: OAuthConfig{
 			GoogleClientID: getString("GOOGLE_CLIENT_ID", ""),
+		},
+		Storage: StorageConfig{
+			SupabaseURL:           getString("SUPABASE_URL", ""),
+			SupabaseServiceKey:    getString("SUPABASE_SERVICE_KEY", ""),
+			SupabaseStorageBucket: getString("SUPABASE_STORAGE_BUCKET", "assets"),
+		},
+		Mailer: MailerConfig{
+			Host:      getString("MAIL_HOST", "smtp.gmail.com"),
+			Port:      getInt("MAIL_PORT", 587),
+			Username:  getString("MAIL_USERNAME", ""),
+			Password:  getString("MAIL_PASSWORD", ""),
+			FromName:  getString("MAIL_FROM_NAME", "IKamers"),
+			FromEmail: getString("MAIL_FROM_EMAIL", ""),
 		},
 	}
 

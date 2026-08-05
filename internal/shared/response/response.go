@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -196,8 +198,32 @@ func ParseValidationError(err error) interface{} {
 	return err.Error()
 }
 
+func humanizeField(s string) string {
+	parts := strings.Split(s, "_")
+	for i, p := range parts {
+		if p == "" {
+			continue
+		}
+		r := []rune(p)
+		r[0] = unicode.ToUpper(r[0])
+		parts[i] = string(r)
+	}
+	return strings.Join(parts, " ")
+}
+
+func toSnakeCase(s string) string {
+	var b strings.Builder
+	for i, r := range s {
+		if i > 0 && unicode.IsUpper(r) {
+			b.WriteRune('_')
+		}
+		b.WriteRune(unicode.ToLower(r))
+	}
+	return b.String()
+}
+
 func validationMessage(fe validator.FieldError) string {
-	field := fe.Field()
+	field := humanizeField(fe.Field())
 	switch fe.Tag() {
 	case "required":
 		return fmt.Sprintf("%s is required", field)
@@ -220,11 +246,15 @@ func validationMessage(fe validator.FieldError) string {
 	case "lte":
 		return fmt.Sprintf("%s must be less than or equal to %s", field, fe.Param())
 	case "eqfield":
-		return fmt.Sprintf("%s must match %s", field, fe.Param())
+		return fmt.Sprintf("%s does not match %s", field, humanizeField(fe.Param()))
+	case "nefield":
+		return fmt.Sprintf("%s must be different from %s", field, humanizeField(fe.Param()))
 	case "url":
 		return fmt.Sprintf("%s must be a valid URL", field)
 	case "uuid":
 		return fmt.Sprintf("%s must be a valid UUID", field)
+	case "strong_password":
+		return fmt.Sprintf("%s must contain at least 1 uppercase, 1 lowercase, 1 digit, and 1 special character", field)
 	default:
 		return fmt.Sprintf("%s is invalid (%s)", field, fe.Tag())
 	}

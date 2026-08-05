@@ -61,8 +61,8 @@ func (r *PostgresRepository) FindByID(ctx context.Context, id int64) (*User, err
 
 func (r *PostgresRepository) Create(ctx context.Context, u *User) (*User, error) {
 	err := r.db.QueryRowContext(ctx, `
-                INSERT INTO users (role_id, email, password_hash, is_active)                                                                        
-                VALUES ($1, $2, $3, $4)
+                INSERT INTO users (role_id, email, password_hash, is_active, is_email_verified)                                                                        
+                VALUES ($1, $2, $3, $4, true)
                 RETURNING id, uuid                                                                                                                  
         `, u.RoleID, u.Email, u.PasswordHash, u.IsActive).Scan(&u.ID, &u.UUID)
 	if err != nil {
@@ -78,5 +78,19 @@ func (r *PostgresRepository) Create(ctx context.Context, u *User) (*User, error)
 
 func (r *PostgresRepository) UpdateLastLogin(ctx context.Context, userID int64, at time.Time) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE users SET last_login_at = $1 WHERE id = $2`, at, userID)
+	return err
+}
+
+func (r *PostgresRepository) UpdatePassword(ctx context.Context, userID int64, passwordHash string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2`,
+		passwordHash, userID)
+	return err
+}
+
+func (r *PostgresRepository) UpdateEmail(ctx context.Context, userID int64, newEmail string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE users SET email = $1, updated_at = now(), is_email_verified = true WHERE id = $2`,
+		newEmail, userID)
 	return err
 }

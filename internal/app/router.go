@@ -2,6 +2,7 @@ package app
 
 import (
 	"gin-ikamers-api/internal/auth"
+	"gin-ikamers-api/internal/profile"
 	"gin-ikamers-api/internal/shared/middleware"
 	"gin-ikamers-api/internal/user"
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,7 @@ func (a *App) RegisterRoutes(router *gin.Engine) {
 
 			auth.RegisterRoutes(v1, a.AuthHandler)
 			user.RegisterRoutes(v1, a.UserHandler, authMW)
+			profile.RegisterRoutes(v1, a.ProfileHandler, authMW)
 		}
 	}
 }
