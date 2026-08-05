@@ -35,6 +35,13 @@ type DatabaseConfig struct {
 	PingTimeout     time.Duration
 }
 
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+	DB       int
+}
+
 type LogConfig struct {
 	Level  string
 	Format string
@@ -69,6 +76,7 @@ type MailerConfig struct {
 type Config struct {
 	App     AppConfig
 	DB      DatabaseConfig
+	Redis   RedisConfig
 	Log     LogConfig
 	JWT     JWTConfig
 	OAuth   OAuthConfig
@@ -106,6 +114,12 @@ func Load() (*Config, error) {
 			ConnMaxIdleTime: getDuration("DB_CONN_MAX_IDLE_TIME", 5*time.Second),
 			ConnMaxLifetime: getDuration("DB_CONN_MAX_LIFE_TIME", 30*time.Second),
 			PingTimeout:     getDuration("DB_PING_TIMEOUT", 5*time.Second),
+		},
+		Redis: RedisConfig{
+			Host:     getString("REDIS_HOST", "localhost"),
+			Port:     getString("REDIS_PORT", "6379"),
+			Password: getString("REDIS_PASSWORD", ""),
+			DB:       getInt("REDIS_DB", 0),
 		},
 		Log: LogConfig{
 			Level:  getString("LOG_LEVEL", "info"),

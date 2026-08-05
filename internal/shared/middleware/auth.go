@@ -1,13 +1,14 @@
 package middleware
 
 import (
-	"gin-ikamers-api/internal/auth"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
 )
 
-func AuthMiddleware(authService *auth.Service) gin.HandlerFunc {
+type TokenVerifier func(token string) (userID int64, role string, err error)
+
+func AuthMiddleware(verify TokenVerifier) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := extractBearerToken(c)
 		if token == "" {
@@ -16,15 +17,15 @@ func AuthMiddleware(authService *auth.Service) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := authService.VerifyAccessToken(token)
+		userID, role, err := verify(token)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			c.Abort()
 			return
 		}
 
-		c.Set("user_id", claims.UserID)
-		c.Set("user_role", claims.Role)
+		c.Set("user_id", userID)
+		c.Set("user_role", role)
 
 		c.Next()
 	}

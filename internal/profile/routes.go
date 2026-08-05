@@ -1,8 +1,12 @@
 package profile
 
-import "github.com/gin-gonic/gin"
+import (
+	"gin-ikamers-api/internal/platform/ratelimit"
+	"gin-ikamers-api/internal/shared/middleware"
+	"github.com/gin-gonic/gin"
+)
 
-func RegisterRoutes(rg *gin.RouterGroup, h *Handler, mw gin.HandlerFunc) {
+func RegisterRoutes(rg *gin.RouterGroup, h *Handler, mw gin.HandlerFunc, limiter *ratelimit.Limiter) {
 	profile := rg.Group("/profile")
 	profile.Use(mw)
 	{
@@ -12,8 +16,14 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler, mw gin.HandlerFunc) {
 		profile.POST("/avatar", h.UploadAvatar)
 		profile.DELETE("/avatar", h.DeleteAvatar)
 
-		profile.PUT("/password", h.ChangePassword)
-		profile.POST("/email", h.RequestEmailChange)
-		profile.POST("/email/verify", h.ConfirmEmailChange)
+		profile.PUT("/password",
+			middleware.RateLimit(limiter, ratelimit.PerHour(10), middleware.KeyByUserID("password_change")),
+			h.ChangePassword)
+		profile.POST("/email",
+			middleware.RateLimit(limiter, ratelimit.PerHour(3), middleware.KeyByUserID("email_change")),
+			h.RequestEmailChange)
+		profile.POST("/email/verify",
+			middleware.RateLimit(limiter, ratelimit.PerHour(10), middleware.KeyByUserID("email_verify")),
+			h.ConfirmEmailChange)
 	}
 }

@@ -11,7 +11,13 @@ import (
 
 // RegisterRoutes registers all HTTP routes for the application.
 func (a *App) RegisterRoutes(router *gin.Engine) {
-	authMW := middleware.AuthMiddleware(a.AuthService)
+	authMW := middleware.AuthMiddleware(func(token string) (int64, string, error) {
+		claims, err := a.AuthService.VerifyAccessToken(token)
+		if err != nil {
+			return 0, "", err
+		}
+		return claims.UserID, claims.Role, nil
+	})
 
 	api := router.Group("/api")
 	{
@@ -20,9 +26,9 @@ func (a *App) RegisterRoutes(router *gin.Engine) {
 			v1.GET("/", home)
 			v1.GET("/health", health)
 
-			auth.RegisterRoutes(v1, a.AuthHandler)
+			auth.RegisterRoutes(v1, a.AuthHandler, a.Limiter)
 			user.RegisterRoutes(v1, a.UserHandler, authMW)
-			profile.RegisterRoutes(v1, a.ProfileHandler, authMW)
+			profile.RegisterRoutes(v1, a.ProfileHandler, authMW, a.Limiter)
 		}
 	}
 }

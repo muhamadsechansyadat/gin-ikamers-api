@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"gin-ikamers-api/internal/shared/response"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -45,6 +46,7 @@ func (h *Handler) Login(c *gin.Context) {
 		response.HandleBindError(c, err)
 		return
 	}
+	fmt.Println("asdfasfd")
 
 	ua := c.Request.UserAgent()
 	ip := c.ClientIP()
@@ -56,6 +58,10 @@ func (h *Handler) Login(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
 		case ErrUserInactive:
 			c.JSON(http.StatusForbidden, gin.H{"error": "user account is inactive"})
+		case ErrTooManyLoginAttempts:
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "Too many failed login attempts. Try again in 15 minutes.",
+			})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
@@ -85,6 +91,10 @@ func (h *Handler) LoginGoogle(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid google id token"})
 		case ErrUserInactive:
 			c.JSON(http.StatusForbidden, gin.H{"error": "user account is inactive"})
+		case ErrTooManyLoginAttempts:
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "Too many failed login attempts. Try again in 15 minutes.",
+			})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}

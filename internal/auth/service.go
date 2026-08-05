@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"gin-ikamers-api/internal/platform/mailer"
+	"gin-ikamers-api/internal/platform/ratelimit"
 	"gin-ikamers-api/internal/user"
 	"google.golang.org/api/idtoken"
 	"math/big"
@@ -20,6 +21,7 @@ type Service struct {
 	googleClientID string
 	defaultRoleID  int64
 	mailer         mailer.Mailer
+	limiter        *ratelimit.Limiter
 }
 
 type TokenPair struct {
@@ -28,10 +30,11 @@ type TokenPair struct {
 	ExpiresAt    time.Time `json:"expires_at"`
 }
 
-func NewService(users user.Repository, authRepo Repository, tokens *TokenService, mailer mailer.Mailer, googleClientID string, defaultRoleID int64) *Service {
+func NewService(users user.Repository, authRepo Repository, tokens *TokenService,
+	mailer mailer.Mailer, googleClientID string, defaultRoleID int64, limiter *ratelimit.Limiter) *Service {
 	return &Service{
 		users: users, authRepo: authRepo, tokens: tokens,
-		mailer: mailer, googleClientID: googleClientID, defaultRoleID: defaultRoleID,
+		mailer: mailer, googleClientID: googleClientID, defaultRoleID: defaultRoleID, limiter: limiter,
 	}
 }
 
@@ -41,6 +44,13 @@ const (
 )
 
 func (s *Service) LoginWithPassword(ctx context.Context, email, password, ua, ip string) (*TokenPair, error) {
+	key := "login:email" + strings.ToLower(strings.TrimSpace(email))
+
+	res, err := s.limiter.Allow(ctx, key, ratelimit.Per(5, 15*time.Minute))
+	if err == nil && !res.Allowed {
+		return nil, ErrTooManyLoginAttempts
+	}
+
 	u, err := s.users.FindByEmail(ctx, email)
 	if err != nil || u == nil {
 		return nil, ErrInvalidCredentials
@@ -51,6 +61,8 @@ func (s *Service) LoginWithPassword(ctx context.Context, email, password, ua, ip
 	if u.PasswordHash == nil || !VerifyPassword(*u.PasswordHash, password) {
 		return nil, ErrInvalidCredentials
 	}
+
+	_ = s.limiter.Reset(ctx, key)
 	return s.issueTokens(ctx, u, ua, ip)
 }
 

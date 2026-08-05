@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gin-ikamers-api/internal/platform/cache"
 	"gin-ikamers-api/internal/shared/validation"
 	"os"
 
@@ -35,8 +36,15 @@ func main() {
 		log.Error("Failed to ini GORM", "error", err)
 		os.Exit(1)
 	}
+
+	rdb, err := cache.NewRedis(cfg.Redis.Host, cfg.Redis.Port, cfg.Redis.Password, cfg.Redis.DB)
+	if err != nil {
+		log.Error("redis init failed", "error", err)
+		os.Exit(1)
+	}
+	defer rdb.Close()
 	// Wire semua dependencies
-	application := app.New(db, gormDB, log, cfg)
+	application := app.New(db, gormDB, rdb, log, cfg)
 
 	// Setup Gin
 	setGinMode(cfg.App.Env)
