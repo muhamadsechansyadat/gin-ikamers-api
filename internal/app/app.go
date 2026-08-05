@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"gin-ikamers-api/internal/auth"
 	"gin-ikamers-api/internal/config"
+	"gin-ikamers-api/internal/platform/health"
 	"gin-ikamers-api/internal/platform/mailer"
 	"gin-ikamers-api/internal/platform/ratelimit"
 	"gin-ikamers-api/internal/profile"
@@ -12,6 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 	"log/slog"
+	"time"
 )
 
 // App holds all wired dependencies for the application.
@@ -27,9 +29,10 @@ type App struct {
 	UserHandler    *user.Handler
 	ProfileHandler *profile.Handler
 
-	// Services (exposed for middleware)
 	AuthService *auth.Service
 	Limiter     *ratelimit.Limiter
+
+	Health *health.Aggregator
 }
 
 // New wires up all dependencies and returns a ready-to-use App.
@@ -70,6 +73,13 @@ func New(db *sql.DB, gdb *gorm.DB, rdb *redis.Client, logger *slog.Logger, cfg *
 	userHandler := user.NewHandler(userService)
 	profileHandler := profile.NewHandler(profileService, userService, authService, supabaseStorage)
 
+	healthChecker := health.New(3*time.Second,
+		health.Postgres("postgres", db),
+		health.Redis("redis", rdb),
+		health.SMTP("smtp", cfg.Mailer.Host, cfg.Mailer.Port),
+		health.HTTP("supabase_storage", cfg.Storage.SupabaseURL+"/storage/v1/version"),
+	)
+
 	return &App{
 		Config: cfg,
 		Logger: logger,
@@ -83,5 +93,6 @@ func New(db *sql.DB, gdb *gorm.DB, rdb *redis.Client, logger *slog.Logger, cfg *
 		ProfileHandler: profileHandler,
 
 		Limiter: limiter,
+		Health:  healthChecker,
 	}
 }
