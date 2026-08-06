@@ -1,8 +1,8 @@
 package middleware
 
 import (
+	"gin-ikamers-api/internal/shared/response"
 	"github.com/gin-gonic/gin"
-	"net/http"
 	"strings"
 )
 
@@ -12,15 +12,13 @@ func AuthMiddleware(verify TokenVerifier) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := extractBearerToken(c)
 		if token == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
-			c.Abort()
+			response.Unauthorized(c, "Missing authorization header", nil)
 			return
 		}
 
 		userID, role, err := verify(token)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
-			c.Abort()
+			response.Unauthorized(c, "Invalid token", nil)
 			return
 		}
 

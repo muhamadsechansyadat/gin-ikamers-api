@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"gin-ikamers-api/internal/shared/response"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -46,7 +45,6 @@ func (h *Handler) Login(c *gin.Context) {
 		response.HandleBindError(c, err)
 		return
 	}
-	fmt.Println("asdfasfd")
 
 	ua := c.Request.UserAgent()
 	ip := c.ClientIP()

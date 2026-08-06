@@ -53,7 +53,7 @@ func main() {
 		log.Error("set trusted proxies", "error", err)
 		os.Exit(1)
 	}
-	router.Use(middleware.Recovery(log), middleware.CORS())
+	router.Use(middleware.RequestLogger(log), middleware.Recovery(log), middleware.CORS())
 	router.HandleMethodNotAllowed = true
 
 	validation.Init()
